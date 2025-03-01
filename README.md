@@ -1,5 +1,5 @@
 # Анализ связи ключевых показателей игровой статистики с успешностью команды в Counter-Strike
-HSE economics data analysis project 2025 by Vasiliy Bloshenko
+*HSE economics data analysis project 2025 by Vasiliy Bloshenko*
 
 Данные взяты парсингом с крупнейшего агрегатора hltv.org. Использованы данные за 2012-2025 годы. В датасете представлены следующие показатели:
 1. Доля выигранных раундов — она будет основной мерой успешности.
