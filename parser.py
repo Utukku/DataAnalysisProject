@@ -5,32 +5,63 @@ from bs4 import BeautifulSoup
 
 # Сам парсер по заданным датам
 
-def parse(con, start_date, end_date):
+def parse(start_date, end_date):
+
     con.request("GET", f"/stats/teams/ftu?startDate={start_date}&endDate={end_date}&rankingFilter=Top60", headers=headers)
-    response = con.getresponse()
-    txt = response.read()
+    main_response = con.getresponse()
+    main_txt = main_response.read()
 
     # За несколько шагов вытаскиваем все числа из таблицы списком
 
-    soup = BeautifulSoup(txt, 'html.parser')
-    body = soup.body
-    data = body.find("table", {"class": "stats-table player-ratings-table ftu gtSmartphone-only"})
-    numbers = data.find_all("td", {"class": "center"})
-    values = []
-    for number in numbers:
+    main_soup = BeautifulSoup(main_txt, 'html.parser')
+    main_body = main_soup.body
+    main_data = main_body.find("table", {"class": "stats-table player-ratings-table ftu gtSmartphone-only"})
+    main_true_names = []
+    main_team_names = map(str, main_data.find_all("td", {"class": "factor-team"}))
+    for team in main_team_names:
+        main_true_names.append(team[-16:])
+    main_numbers = main_data.find_all("td", {"class": "center"})
+    main_values = []
+    for number in main_numbers:
         loc_l = str(number).find('>') + 1
         if '%' in str(number):
             loc_r = str(number).find('%')
         else:
             loc_r = str(number).find('</')
         value = float(str(number)[loc_l:loc_r])
-        values.append(value)
+        main_values.append(value)
 
     # И собираем список обратно в таблицу
 
-    table = pd.DataFrame(np.array(values).reshape((-1, 8)), columns=['winrate', 'opening_kills', 'multikills', '5v4', '4v5', 'trades', 'grenades_damage', 'flash_assists'])
+    main_table = pd.DataFrame(np.array(main_values).reshape((-1, 8)), index=main_true_names, columns=['winrate', 'opening_kills', 'multikills', '5v4', '4v5', 'trades', 'grenades_damage', 'flash_assists'])
 
-    return table
+    con.request("GET", f"/stats/teams/pistols?startDate={start_date}&endDate={end_date}&rankingFilter=Top60", headers=headers)
+    pistol_response = con.getresponse()
+    pistol_txt = pistol_response.read()
+
+    # За несколько шагов вытаскиваем все числа из таблицы списком
+
+    pistol_soup = BeautifulSoup(pistol_txt, 'html.parser')
+    pistol_body = pistol_soup.body
+    pistol_data = pistol_body.find("table", {"class": "stats-table player-ratings-table ftu"})
+    pistol_true_names = []
+    pistol_team_names = map(str, pistol_data.find_all("td", {"class": "factor-team"}))
+    for team in pistol_team_names:
+        pistol_true_names.append(team[-16:])
+    pistol_numbers = pistol_data.find_all("td", {"class": "center"})
+    pistol_values = []
+    for number in range(len(pistol_numbers)):
+        if number % 4 != 0:
+            loc_l = str(pistol_numbers[number]).find('>') + 1
+            loc_r = str(pistol_numbers[number]).find('%')
+            value = float(str(pistol_numbers[number])[loc_l:loc_r])
+            pistol_values.append(value)
+
+    # И собираем список обратно в таблицу
+
+    pistol_table = pd.DataFrame(np.array(pistol_values).reshape((-1, 3)), index=pistol_true_names, columns=['pistol_wins', 'r2_conversion', 'r2_break'])
+
+    return main_table.join(pistol_table)
 
 # Параметры для обмана hltv.org. Вероятно, избыточные, но сайт очень не хотел делиться данными
 
@@ -54,7 +85,7 @@ headers = {'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,imag
 host = 'www.hltv.org'
 con = http.client.HTTPSConnection(host)
 
-general = pd.DataFrame(columns=['winrate', 'opening_kills', 'multikills', '5v4', '4v5', 'trades', 'grenades_damage', 'flash_assists'])
+general = pd.DataFrame(columns=['winrate', 'opening_kills', 'multikills', '5v4', '4v5', 'trades', 'grenades_damage', 'flash_assists', 'pistol_wins', 'r2_conversion', 'r2_break'])
 days = {1: 31,
         2: 28,
         3: 31,
@@ -72,9 +103,9 @@ days = {1: 31,
 
 for year in range(2017, 2025):
     for month in range(1, 13):
-        parsed = parse(con, f'{year}-{str(month).zfill(2)}-01', f'{year}-{str(month).zfill(2)}-{days[month]}')
+        parsed = parse(f'{year}-{str(month).zfill(2)}-01', f'{year}-{str(month).zfill(2)}-{days[month]}')
 
-        general = pd.concat([general, parsed], ignore_index=True)
+        general = pd.concat([general, parsed])
 
 general.to_csv('dataset.csv', index=False)
 
