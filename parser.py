@@ -7,6 +7,8 @@ from bs4 import BeautifulSoup
 
 def parse(start_date, end_date):
 
+    # Берём первую таблицу
+    
     con.request("GET", f"/stats/teams/ftu?startDate={start_date}&endDate={end_date}&rankingFilter=Top60", headers=headers)
     main_response = con.getresponse()
     main_txt = main_response.read()
@@ -35,11 +37,13 @@ def parse(start_date, end_date):
 
     main_table = pd.DataFrame(np.array(main_values).reshape((-1, 8)), index=main_true_names, columns=['winrate', 'opening_kills', 'multikills', '5v4', '4v5', 'trades', 'grenades_damage', 'flash_assists'])
 
+    # Берём вторую таблицу
+    
     con.request("GET", f"/stats/teams/pistols?startDate={start_date}&endDate={end_date}&rankingFilter=Top60", headers=headers)
     pistol_response = con.getresponse()
     pistol_txt = pistol_response.read()
 
-    # За несколько шагов вытаскиваем все числа из таблицы списком
+    # Так же вытаскиваем все числа из таблицы списком
 
     pistol_soup = BeautifulSoup(pistol_txt, 'html.parser')
     pistol_body = pistol_soup.body
@@ -57,9 +61,11 @@ def parse(start_date, end_date):
             value = float(str(pistol_numbers[number])[loc_l:loc_r])
             pistol_values.append(value)
 
-    # И собираем список обратно в таблицу
+    # И так же собираем список обратно в таблицу
 
     pistol_table = pd.DataFrame(np.array(pistol_values).reshape((-1, 3)), index=pistol_true_names, columns=['pistol_wins', 'r2_conversion', 'r2_break'])
+
+    # Возвращаем объединённую таблицу
 
     return main_table.join(pistol_table)
 
