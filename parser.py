@@ -107,7 +107,7 @@ days = {1: 31,
 
 # Задаём нужные годы и получаем общую таблицу
 
-for year in range(2017, 2025):
+for year in range(2018, 2025):
     for month in range(1, 13):
         parsed = parse(f'{year}-{str(month).zfill(2)}-01', f'{year}-{str(month).zfill(2)}-{days[month]}')
 
